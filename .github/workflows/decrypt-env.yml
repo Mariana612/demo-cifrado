@@ -1,44 +1,46 @@
-
 name: Descifrar secreto.env.enc
 
 on:
-  push:
-    branches:
-      - master
+  push:
+    branches:
+      - master
 
 jobs:
-  decrypt:
-    runs-on: ubuntu-latest
+  decrypt:
+    runs-on: ubuntu-latest
 
-    steps:
-      # Obtener el código del repositorio
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    steps:
+      # Obtener el código del repositorio
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      # Instalar GPG y SOPS
-      - name: Instalar SOPS y GPG
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gnupg wget
-          sudo wget wget https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64 -O /usr/local/bin/sops
-          sudo chmod +x /usr/local/bin/sops
+      # Instalar SOPS y AGE
+      - name: Install SOPS and AGE
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg2 wget
+          # Instalar AGE
+          sudo apt install age
+          # Instalar SOPS
+          sudo wget https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64 -O /usr/local/bin/sops
+          sudo chmod +x /usr/local/bin/sops
+          
 
-      # Importar la clave privada GPG desde los secretos
-      - name: Importar clave privada GPG
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-        run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          echo "use-agent" >> ~/.gnupg/gpg.conf
-          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+      # Paso 3: Importar la clave privada AGE desde los secretos
+      - name: Importar clave privada AGE
+        env:
+          AGE_PRIVATE_KEY: ${{ secrets.AGE_PRIVATE_KEY }}
+        run: |
+          echo "$AGE_PRIVATE_KEY" > ~/.age_key
+          chmod 600 ~/.age_key
+          # Establecer el entorno para que SOPS pueda encontrar la clave privada
+          export SOPS_AGE_KEY_FILE=~/.age_key
 
-      # Descifrar el archivo .env.enc usando SOPS
-      - name: Descifrar archivo .env.enc
-        env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          sops --batch --decrypt --passphrase "$GPG_PASSPHRASE" --output .env .env.enc
+      # Paso 4: Desencriptar el archivo secreto.env.enc usando SOPS y AGE
+      - name: Descifrar archivo secreto.env.enc
+        run: |
+          sops --decrypt --input-type dotenv --output-type dotenv --age $SOPS_AGE_KEY_FILE secreto.env.enc > .env
 
-      # Mostrar contenido de .env 
-      - name: Mostrar contenido de .env
-        run: cat .env
+      # Paso 5: Mostrar contenido de .env
+      - name: Mostrar contenido de .env
+        run: cat .env
