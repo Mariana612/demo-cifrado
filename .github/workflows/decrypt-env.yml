@@ -1,0 +1,44 @@
+
+name: Descifrar secreto.env.enc
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  decrypt:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Obtener el código del repositorio
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # Instalar GPG y SOPS
+      - name: Instalar SOPS y GPG
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg wget
+          sudo wget wget https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64 -O /usr/local/bin/sops
+          sudo chmod +x /usr/local/bin/sops
+
+      # Importar la clave privada GPG desde los secretos
+      - name: Importar clave privada GPG
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+
+      # Descifrar el archivo .env.enc usando SOPS
+      - name: Descifrar archivo .env.enc
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          sops --batch --decrypt --passphrase "$GPG_PASSPHRASE" --output .env .env.enc
+
+      # Mostrar contenido de .env 
+      - name: Mostrar contenido de .env
+        run: cat .env
