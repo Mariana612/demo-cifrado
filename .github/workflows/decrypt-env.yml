@@ -25,7 +25,6 @@ jobs:
           sudo wget https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64 -O /usr/local/bin/sops
           sudo chmod +x /usr/local/bin/sops
           
-
       # Paso 3: Importar la clave privada AGE desde los secretos
       - name: Importar clave privada AGE
         env:
@@ -33,17 +32,25 @@ jobs:
         run: |
           echo "$AGE_PRIVATE_KEY" > ~/.age_key
           chmod 600 ~/.age_key
-          # Establecer el entorno para que SOPS pueda encontrar la clave privada
-          export SOPS_AGE_KEY_FILE=~/.age_key
+          # Asegurarse de que la clave AGE se guardó correctamente
+          cat ~/.age_key
 
-      # Paso 4: Asegurarse de que el archivo secreto.env.enc está disponible y desencriptar
+      # Verificar si el archivo secreto.env.enc está presente
       - name: Verificar que el archivo secreto.env.enc está presente
         run: |
           ls -l secreto.env.enc
 
-      - name: Descifrar archivo secreto.env.enc usando SOPS y AGE
+      # Paso 4: Asegurarse de que la variable de entorno esté exportada correctamente
+      - name: Verificar variable de entorno SOPS_AGE_KEY_FILE
         run: |
+          echo "SOPS_AGE_KEY_FILE=$SOPS_AGE_KEY_FILE"
+
+      # Paso 5: Descifrar el archivo secreto.env.enc usando SOPS y AGE
+      - name: Descifrar archivo secreto.env.enc
+        run: |
+          export SOPS_AGE_KEY_FILE=~/.age_key  # Asegurarnos de que la variable está configurada
           sops --decrypt --input-type dotenv --output-type dotenv --age $SOPS_AGE_KEY_FILE secreto.env.enc > .env
+
 
 
       # Paso 5: Mostrar contenido de .env
