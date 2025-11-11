@@ -36,10 +36,15 @@ jobs:
           # Establecer el entorno para que SOPS pueda encontrar la clave privada
           export SOPS_AGE_KEY_FILE=~/.age_key
 
-      # Paso 4: Desencriptar el archivo secreto.env.enc usando SOPS y AGE
-      - name: Descifrar archivo secreto.env.enc
+      # Paso 4: Asegurarse de que el archivo secreto.env.enc está disponible y desencriptar
+      - name: Verificar que el archivo secreto.env.enc está presente
+        run: |
+          ls -l secreto.env.enc
+
+      - name: Descifrar archivo secreto.env.enc usando SOPS y AGE
         run: |
           sops --decrypt --input-type dotenv --output-type dotenv --age $SOPS_AGE_KEY_FILE secreto.env.enc > .env
+
 
       # Paso 5: Mostrar contenido de .env
       - name: Mostrar contenido de .env
